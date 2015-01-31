@@ -179,7 +179,7 @@ setInterval(function(){
 		console.log('do_run == false, skipping this round\n\n');
 	}
 
-// one hour
-}, 360000);
+// one hour twenty three minutes
+}, 383000);
 
 

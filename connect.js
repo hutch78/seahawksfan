@@ -25,3 +25,6 @@ app.use(function(req, res, next) {
 });
 //creates the server at localhost:3000
 http.createServer(app).listen(3000);
+
+
+console.log('tjhis file is being used!!!');
