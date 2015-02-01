@@ -16,7 +16,8 @@ var Twit = require("twit"),
 	tweet_logging = 4,
 	which_team = 'patriots',
 	skip_threshold = 600,
-	num_shit_talked = 0;
+	num_shit_talked = 0,
+	refollow_object = {};
 
 function get_rand(the_integer, include_zero){
 	if(include_zero){
@@ -216,18 +217,14 @@ seahawks_stream.on('tweet', function (tweet) {
 				} else {
 					console.log(tweet_count+". "+the_team+" - Skipping random Post No Post Made. \n");
 				}
-			}
-			
-		}
-		
+			}	
+		}	
 
 		firstRunThrough = false;
 
 		skipped_seahawks++;
 
 	}
-
-	
 
 });
 
@@ -239,8 +236,9 @@ seahawks_stream.on('tweet', function (tweet) {
 
 function reply_to_followers(){
 
+	console.log('\nChecking for new followers...\n');
+
 	var found = 0,
-		refollow_object = {},
 		refollow_list = [];
 
 	// People who follow me
@@ -248,8 +246,6 @@ function reply_to_followers(){
 	    if(err) return function(err){
 	    	console.log(err);
 	    }
-
-	    // console.log(reply);
 	    
 	    var followers = reply.ids;
 	    
@@ -264,62 +260,68 @@ function reply_to_followers(){
 	        	i = 0,
 	        	found = false,
 	        	count = 0,
-        		length = followers.length;
+        		length = followers.length,
+				target_id_str = '',
+       			target_screen_name = '',
+       			trigger_refollow = false;
 
-	        while(found == false && count < length){
+		    for(var k = 0; k < length; k++){
 
-	        	var target_id_str = followers[count]
+		       	var target_id_str = followers[count]
 
-	        	// console.log('\nCount = '+count+', Found = '+found+', Length = '+length+'\n');
-	        	// console.log('\nTarget_id_str = '+target_id_str+'\n');
+		       	T.get('friendships/show', { target_id: target_id_str }, function(err, data){
+		       		if(err){
+		       			console.log(err);
+		       		} else {
+		       			found = true;
+		       		}
+
+		       		if(data.relationship.source.following == false){
+		       			found = true;
+		       			trigger_refollow = true;
+
+		       			console.log('\n\nFound Unfollowed Follower\n\n');
+
+						target_id_str = data.relationship.target.id_str,
+		       			target_screen_name = data.relationship.target.screen_name;
+
+		       			refollow_object = {
+		       				id_str: data.relationship.target.id_str,
+		       				screen_name: data.relationship.target.screen_name
+		       			};
 
 
-	        	T.get('friendships/show', { target_id: target_id_str }, function(err, data){
-	        		if(err){
-	        			console.log(err);
-	        		} else {
-	        			found = true;
-	        		}
+		       			setTimeout(function() {
+			       			//follow a follower
+			       			T.post('friendships/create', { id: refollow_object.id_str },
+			       			    function (error, response){
+			       			        if(error) {
+			       			        	console.error(error) 
+			       			        } else {
+			       			        	console.log('\nNew Friend Added! :)\n');
+			       			        }
+			       			    }
+			       			);		       				
+		       			}, get_rand(10)*1000);
 
-	        		if(data.relationship.source.following == false){
-	        			found = true;
+		       			var refollow_text = "Thanks for the follow @"+refollow_object.screen_name+" GO @Seahawks #LegionOfBoom";
 
-	        			console.log('\n\nFound Unfollowed Follower\n\n');
+		       			setTimeout(function() {
+		       				post_tweet(refollow_text,null,null);
+		       			}, get_rand(10)*1000);
 
-	        			var target_id_str = data.relationship.target.id_str,
-	        				target_screen_name = data.relationship.target.screen_name;
+		       		}; 
 
-	        			refollow_object = {
-	        				id_str: target_id_str,
-	        				screen_name: target_screen_name
-	        			};
+		       	}); // end T.get
 
-	        			console.log(refollow_object);
+		       	count++;
 
-	        		}; 
-
-	        	}); // end T.get
-
-	        	count++;
-
-	        	if(count == length - 1){
-	        		console.log('Object:');
-	        		console.log(refollow_object);
-	        	}
-
-	        };  // endwhile
+		    } // endfor
 
 	    });  // end T.get
 	
 	}); // end T.get
 };
-
-
-
-
-reply_to_followers();
-
-
 
 
 function start_pats_stream(){
@@ -603,6 +605,9 @@ var talk_trash = function(the_query, num_tweets){
 	Let it ride...
 
 =- =- =-  =- -= =- =- =- -=*/
+
+reply_to_followers();
+
 setInterval(function(){ 
 
 	if(get_rand(100) > 30){	
@@ -614,6 +619,10 @@ setInterval(function(){
 
 	if(get_rand(100) > 35){
 		find_new_user();
+	}
+
+	if(get_rand(100) < 35){
+		reply_to_followers();
 	}
 
 	// if(get_rand(100) < 11){
